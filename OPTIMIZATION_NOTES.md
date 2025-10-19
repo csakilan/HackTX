@@ -5,12 +5,14 @@
 ### 1. **Simplified Severity Classification Prompt**
 
 **Before (Verbose):**
+
 - 50+ lines of detailed context
 - Full leaderboard display
 - Extensive guidelines with examples
 - Multiple paragraphs of instructions
 
 **After (Optimized):**
+
 - 15 lines of essential context only
 - Key data: Position, Lap, Critical temps, Fuel
 - Concise 3-category classification
@@ -23,28 +25,32 @@
 Based on research, these techniques were implemented:
 
 #### **Be Direct and Specific**
+
 - ✅ "OUTPUT ONE WORD ONLY:" instead of verbose instructions
 - ✅ Direct classification examples in bullet points
 - ✅ No unnecessary context or explanations
 
 #### **Reduce Token Count**
+
 - ✅ Removed full leaderboard (was 10+ drivers)
 - ✅ Kept only critical telemetry (brake, tire, fuel temps)
 - ✅ Shortened classification guidelines to keywords
 
 #### **Use Structured Format**
+
 ```
 DRIVER: Carlos Sainz | P5 | Lap 15
 CRITICAL DATA: Brake 450°C | Tire 95°C | Fuel 30.5L
 MESSAGE: "..."
 CLASSIFY AS:
 - "high" = [keywords]
-- "medium" = [keywords]  
+- "medium" = [keywords]
 - "low" = [keywords]
 OUTPUT ONE WORD ONLY:
 ```
 
 #### **Temperature Control**
+
 - Default temperature (1.0) for classification
 - Lower temperature (0.3) for message refinement (more consistent)
 
@@ -57,15 +63,15 @@ OUTPUT ONE WORD ONLY:
 Every engineer message now goes through automatic refinement:
 
 #### **What It Does:**
+
 1. **Removes Filler Words**
    - "um", "uh", "like", "you know", etc.
-   
 2. **Fixes Speech-to-Text Errors**
    - Homophones: "breaks" → "brakes"
    - F1 terms: "DRS", driver names, team names
    - Numbers: ensures clarity
-   
 3. **Makes Messages Concise**
+
    - Radio transmission style
    - Only essential information
    - Professional F1 terminology
@@ -77,12 +83,12 @@ Every engineer message now goes through automatic refinement:
 
 ### **Example Transformations:**
 
-| Original (STT) | Refined |
-|----------------|---------|
-| "Um, you know, the breaks are like really hot right now" | "Brakes are very hot" |
-| "We're gonna need you to come in, uh, come in and pit" | "Box this lap" |
+| Original (STT)                                                     | Refined                         |
+| ------------------------------------------------------------------ | ------------------------------- |
+| "Um, you know, the breaks are like really hot right now"           | "Brakes are very hot"           |
+| "We're gonna need you to come in, uh, come in and pit"             | "Box this lap"                  |
 | "Your doing great, keep it up, your gap is like 3 point 2 seconds" | "Gap 3.2 seconds, keep pushing" |
-| "The tires, uh, the tyres are starting to lose temp" | "Tire temps dropping" |
+| "The tires, uh, the tyres are starting to lose temp"               | "Tire temps dropping"           |
 
 ### **API Configuration:**
 
@@ -124,16 +130,19 @@ generationConfig: {
 ## 📊 Performance Improvements
 
 ### **Severity Classification:**
+
 - **Before**: ~2-3 seconds response time
 - **After**: ~0.5-1 second response time
 - **Improvement**: 60-70% faster
 
 ### **Token Usage:**
+
 - **Before**: ~1500 tokens per classification
 - **After**: ~400 tokens per classification
 - **Savings**: 73% reduction
 
 ### **User Experience:**
+
 - Messages appear faster in Engineering Feed
 - Countdown timers start sooner
 - Less latency in the entire pipeline
@@ -143,6 +152,7 @@ generationConfig: {
 ## 🧪 Testing Examples
 
 ### **Test Refinement:**
+
 ```
 Input:  "Um, so like, the breaks are getting hot, uh, around 580 degrees"
 Output: "Brakes at 580°C"
@@ -155,6 +165,7 @@ Output: "Box box box, come in now"
 ```
 
 ### **Test Severity (Fast):**
+
 ```
 "Brake failure detected"           → high   (0.6s)
 "Planning pit in 3 laps"           → medium (0.5s)
@@ -168,14 +179,17 @@ Output: "Box box box, come in now"
 ### **Future Improvements:**
 
 1. **Caching Common Classifications**
+
    - Cache severity for similar messages
    - Reduces API calls for repeated patterns
 
 2. **Parallel Processing**
+
    - Run refinement and classification in parallel
    - Could save additional 0.3-0.5s
 
 3. **Local Fallbacks**
+
    - Keyword-based classification for common phrases
    - Only use Gemini for complex cases
 

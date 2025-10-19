@@ -3,20 +3,25 @@
 ## Issues Fixed
 
 ### 1. ✅ Duplicate Messages
+
 **Problem:** Engineer messages were appearing twice in the UI - once in Engineering Feed and once in AI ↔ Driver Radio.
 
 **Root Cause:** The code was calling `addMessage()` twice:
+
 - Once when message was created (for Engineering Feed)
 - Once after the delay timer (for Radio Feed)
 
 **Solution:** Messages are now added **ONCE** with all metadata. The two views filter the same message array differently:
+
 - **Engineering Feed:** Shows non-override engineer messages with countdown timers
 - **AI ↔ Driver Radio:** Shows messages after they've been "sent" (deliveryTime has passed OR isOverride is true)
 
 ### 2. ✅ AI Responses to Engineer Messages
+
 **Problem:** AI was appearing to respond to engineer override messages.
 
 **Root Cause Investigation:**
+
 - Reviewed all AI response generation code
 - AI responses are ONLY triggered in `DriverAudio.tsx` when driver speaks
 - **No code existed that generates AI responses to engineer messages**
@@ -24,14 +29,17 @@
 **Actual Issue:** Timing confusion - AI responses to previous driver messages were appearing after engineer override messages.
 
 **Solution:** Added visual distinction and filtering:
+
 - Engineer messages now clearly show `OVERRIDE` badge in red with pulsing animation
 - Radio Feed filters ensure only "sent" engineer messages appear
 - Each message type has distinct color-coded badges (DRIVER=blue, ENGINEER=red, AI=cyan)
 
 ### 3. ✅ Override Badge
+
 **Problem:** Override messages had no visual indicator showing they bypassed the queue.
 
 **Solution:** Added prominent `OVERRIDE` badge:
+
 - Red background with pulsing animation
 - AlertTriangle icon for urgency
 - Only appears on override engineer messages in Radio Feed
@@ -39,23 +47,31 @@
 ## Code Changes
 
 ### `/frontend/src/store/useRaceStore.ts`
+
 - Added `isOverride?: boolean` field to `Message` interface
 
 ### `/frontend/src/components/EngineerPanel.tsx`
+
 **Before:**
+
 ```typescript
 // Added message twice - once for Engineering Feed, once for Radio
-addMessage({ /* Engineering Feed */ });
+addMessage({
+  /* Engineering Feed */
+});
 setTimeout(() => {
-  addMessage({ /* Radio Feed */ });
+  addMessage({
+    /* Radio Feed */
+  });
 }, delay);
 ```
 
 **After:**
+
 ```typescript
 // Add message ONCE with all metadata
 addMessage({
-  sender: 'engineer',
+  sender: "engineer",
   text: refinedMessage,
   severity: severity,
   createdAt: now,
@@ -70,20 +86,22 @@ setTimeout(async () => {
 ```
 
 ### `/frontend/src/components/RadioFeed.tsx`
+
 **Filtering Logic:**
+
 ```typescript
 // Force re-render every 100ms to update visibility
 useEffect(() => {
-  const interval = setInterval(() => setTick(t => t + 1), 100);
+  const interval = setInterval(() => setTick((t) => t + 1), 100);
   return () => clearInterval(interval);
 }, []);
 
 // Show engineer messages only if:
 // 1. They're override messages (immediate), OR
 // 2. Their deliveryTime has passed (countdown finished)
-const filteredMessages = messages.filter(m => {
-  if (m.sender === 'ai' || m.sender === 'driver') return true;
-  if (m.sender === 'engineer') {
+const filteredMessages = messages.filter((m) => {
+  if (m.sender === "ai" || m.sender === "driver") return true;
+  if (m.sender === "engineer") {
     return m.isOverride || !m.deliveryTime || Date.now() >= m.deliveryTime;
   }
   return false;
@@ -91,34 +109,38 @@ const filteredMessages = messages.filter(m => {
 ```
 
 **Override Badge:**
+
 ```tsx
-{message.sender === "engineer" && (
-  <>
-    <Badge className="bg-[#e10600] text-white...">
-      ENGINEER
-    </Badge>
-    {message.isOverride && (
-      <Badge className="bg-[#ff0000] text-white... animate-pulse">
-        <AlertTriangle className="w-3 h-3 mr-1" />
-        OVERRIDE
-      </Badge>
-    )}
-  </>
-)}
+{
+  message.sender === "engineer" && (
+    <>
+      <Badge className="bg-[#e10600] text-white...">ENGINEER</Badge>
+      {message.isOverride && (
+        <Badge className="bg-[#ff0000] text-white... animate-pulse">
+          <AlertTriangle className="w-3 h-3 mr-1" />
+          OVERRIDE
+        </Badge>
+      )}
+    </>
+  );
+}
 ```
 
 ### `/frontend/src/components/ConversationTabs.tsx`
+
 **Filtering Logic:**
+
 ```typescript
 // Engineering Feed: Show non-override messages with countdown timers
-const engineerMessages = messages.filter(m => 
-  m.sender === 'engineer' && !m.isOverride
+const engineerMessages = messages.filter(
+  (m) => m.sender === "engineer" && !m.isOverride
 );
 ```
 
 ## Message Flow Diagram
 
 ### Regular Engineer Message (Push-to-Talk)
+
 ```
 1. Engineer speaks → STT → Refine → Classify severity
 2. addMessage() called ONCE with:
@@ -135,6 +157,7 @@ const engineerMessages = messages.filter(m =>
 ```
 
 ### Override Engineer Message (Override Button)
+
 ```
 1. Engineer speaks → STT → Refine (no classify)
 2. addMessage() called ONCE with:
@@ -148,6 +171,7 @@ const engineerMessages = messages.filter(m =>
 ```
 
 ### Driver Message (T Key)
+
 ```
 1. Driver speaks → STT
 2. addMessage() for driver
@@ -177,12 +201,12 @@ NOTE: AI NEVER responds to engineer messages - only to driver!
 
 ## Visual Indicators
 
-| Message Type | Badge | Color | Animation | Location |
-|--------------|-------|-------|-----------|----------|
-| Driver | DRIVER | Blue (#0090ff) | None | Radio Feed |
-| AI | AI | Cyan (#00d2be) | None | Radio Feed |
-| Engineer (Regular) | ENGINEER | Red (#e10600) | None | Engineering Feed → Radio Feed |
-| Engineer (Override) | ENGINEER + OVERRIDE | Red (#ff0000) | Pulse | Radio Feed only |
+| Message Type        | Badge               | Color          | Animation | Location                      |
+| ------------------- | ------------------- | -------------- | --------- | ----------------------------- |
+| Driver              | DRIVER              | Blue (#0090ff) | None      | Radio Feed                    |
+| AI                  | AI                  | Cyan (#00d2be) | None      | Radio Feed                    |
+| Engineer (Regular)  | ENGINEER            | Red (#e10600)  | None      | Engineering Feed → Radio Feed |
+| Engineer (Override) | ENGINEER + OVERRIDE | Red (#ff0000)  | Pulse     | Radio Feed only               |
 
 ## Performance Optimizations
 

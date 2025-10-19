@@ -1,31 +1,40 @@
-import { motion } from 'motion/react';
-import { useRaceStore } from '../store/useRaceStore';
-import { Badge } from './ui/badge';
-import { Button } from './ui/button';
-import { Send, Cpu, User, CheckCircle, Clock, Timer } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { motion } from "motion/react";
+import { useRaceStore } from "../store/useRaceStore";
+import { Badge } from "./ui/badge";
+import { Button } from "./ui/button";
+import { Send, Cpu, User, CheckCircle, Clock, Timer } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 // Countdown Timer Component
-function CountdownTimer({ deliveryTime, createdAt }: { deliveryTime: number; createdAt?: number }) {
+function CountdownTimer({
+  deliveryTime,
+  createdAt,
+}: {
+  deliveryTime: number;
+  createdAt?: number;
+}) {
   const [timeLeft, setTimeLeft] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
   const [progress, setProgress] = useState(100);
 
   useEffect(() => {
     const totalTime = createdAt ? deliveryTime - createdAt : 0;
-    
+
     const updateTimer = () => {
       const now = Date.now();
       const remaining = Math.max(0, deliveryTime - now);
       setTimeLeft(remaining);
-      
+
       // Calculate progress percentage
       if (totalTime > 0) {
         const elapsed = now - (createdAt || now);
-        const progressPercent = Math.max(0, Math.min(100, (elapsed / totalTime) * 100));
+        const progressPercent = Math.max(
+          0,
+          Math.min(100, (elapsed / totalTime) * 100)
+        );
         setProgress(progressPercent);
       }
-      
+
       if (remaining === 0 && !isComplete) {
         setIsComplete(true);
       }
@@ -50,12 +59,26 @@ function CountdownTimer({ deliveryTime, createdAt }: { deliveryTime: number; cre
   }
 
   const seconds = (timeLeft / 1000).toFixed(1);
-  const colorClass = timeLeft < 1000 ? 'text-[#ff0000]' : timeLeft < 2000 ? 'text-[#ffa500]' : 'text-[#00d2be]';
-  const borderColor = timeLeft < 1000 ? 'border-[#ff0000]' : timeLeft < 2000 ? 'border-[#ffa500]' : 'border-[#00d2be]';
+  const colorClass =
+    timeLeft < 1000
+      ? "text-[#ff0000]"
+      : timeLeft < 2000
+      ? "text-[#ffa500]"
+      : "text-[#00d2be]";
+  const borderColor =
+    timeLeft < 1000
+      ? "border-[#ff0000]"
+      : timeLeft < 2000
+      ? "border-[#ffa500]"
+      : "border-[#00d2be]";
 
   return (
     <div className="flex items-center gap-2">
-      <Badge className={`bg-[rgba(0,0,0,0.5)] border ${borderColor} px-2 py-0.5 text-[10px] ${colorClass} ${timeLeft < 2000 ? 'animate-pulse' : ''}`}>
+      <Badge
+        className={`bg-[rgba(0,0,0,0.5)] border ${borderColor} px-2 py-0.5 text-[10px] ${colorClass} ${
+          timeLeft < 2000 ? "animate-pulse" : ""
+        }`}
+      >
         <Timer className="w-3 h-3 mr-1" />
         {seconds}s
       </Badge>
@@ -63,13 +86,13 @@ function CountdownTimer({ deliveryTime, createdAt }: { deliveryTime: number; cre
       <div className="w-16 h-1.5 bg-[rgba(255,255,255,0.1)] rounded-full overflow-hidden">
         <motion.div
           className={`h-full ${
-            timeLeft < 1000 
-              ? 'bg-[#ff0000]' 
-              : timeLeft < 2000 
-              ? 'bg-[#ffa500]' 
-              : 'bg-[#00d2be]'
+            timeLeft < 1000
+              ? "bg-[#ff0000]"
+              : timeLeft < 2000
+              ? "bg-[#ffa500]"
+              : "bg-[#00d2be]"
           }`}
-          initial={{ width: '0%' }}
+          initial={{ width: "0%" }}
           animate={{ width: `${progress}%` }}
           transition={{ duration: 0.1 }}
         />
@@ -81,7 +104,9 @@ function CountdownTimer({ deliveryTime, createdAt }: { deliveryTime: number; cre
 export function ConversationTabs() {
   const { messages } = useRaceStore();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [messageStatuses, setMessageStatuses] = useState<Record<string, 'in-progress' | 'completed'>>({});
+  const [messageStatuses, setMessageStatuses] = useState<
+    Record<string, "in-progress" | "completed">
+  >({});
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -90,14 +115,16 @@ export function ConversationTabs() {
   }, [messages]);
 
   // Filter out override messages from Engineering Feed (they go straight to Radio)
-  const engineerMessages = messages.filter(m => m.sender === 'engineer' && !m.isOverride);
+  const engineerMessages = messages.filter(
+    (m) => m.sender === "engineer" && !m.isOverride
+  );
 
   const handleSend = (messageId: string) => {
-    setMessageStatuses(prev => ({ ...prev, [messageId]: 'in-progress' }));
-    
+    setMessageStatuses((prev) => ({ ...prev, [messageId]: "in-progress" }));
+
     // Simulate sending and mark as completed after 2 seconds
     setTimeout(() => {
-      setMessageStatuses(prev => ({ ...prev, [messageId]: 'completed' }));
+      setMessageStatuses((prev) => ({ ...prev, [messageId]: "completed" }));
     }, 2000);
   };
 
@@ -106,19 +133,22 @@ export function ConversationTabs() {
       {/* Header */}
       <div className="bg-gradient-to-r from-[#222] to-[#1a1a1a] px-4 py-3 border-b border-[rgba(225,6,0,0.3)] flex-shrink-0">
         <h2 className="f1-text text-white">Engineer Feed & AI</h2>
-        <p className="text-[10px] text-gray-500 mt-0.5">Race engineer transmissions with AI recommendations</p>
+        <p className="text-[10px] text-gray-500 mt-0.5">
+          Race engineer transmissions with AI recommendations
+        </p>
       </div>
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto overflow-x-hidden">
-        <div ref={scrollRef} className="p-4 space-y-4">{/*  */}
+        <div ref={scrollRef} className="p-4 space-y-4">
+          {/*  */}
           {engineerMessages.map((message, index) => {
             const status = messageStatuses[message.id];
             // Get the next AI message that follows this engineer message
-            const messageIndex = messages.findIndex(m => m.id === message.id);
+            const messageIndex = messages.findIndex((m) => m.id === message.id);
             const nextAIMessage = messages
               .slice(messageIndex + 1)
-              .find(m => m.sender === 'ai');
+              .find((m) => m.sender === "ai");
 
             return (
               <motion.div
@@ -139,13 +169,13 @@ export function ConversationTabs() {
                       </Badge>
                       {/* Severity Badge */}
                       {message.severity && (
-                        <Badge 
+                        <Badge
                           className={`border-0 px-2 py-0.5 text-[10px] ${
-                            message.severity === 'high'
-                              ? 'bg-[#ff0000] text-white'
-                              : message.severity === 'medium'
-                              ? 'bg-[#ffa500] text-black'
-                              : 'bg-[#00d2be] text-black'
+                            message.severity === "high"
+                              ? "bg-[#ff0000] text-white"
+                              : message.severity === "medium"
+                              ? "bg-[#ffa500] text-black"
+                              : "bg-[#00d2be] text-black"
                           }`}
                         >
                           {message.severity.toUpperCase()}
@@ -153,24 +183,26 @@ export function ConversationTabs() {
                       )}
                       {/* Countdown Timer */}
                       {message.deliveryTime && (
-                        <CountdownTimer 
-                          deliveryTime={message.deliveryTime} 
+                        <CountdownTimer
+                          deliveryTime={message.deliveryTime}
                           createdAt={message.createdAt}
                         />
                       )}
-                      <span className="text-[10px] text-gray-500 f1-text">{message.timestamp}</span>
+                      <span className="text-[10px] text-gray-500 f1-text">
+                        {message.timestamp}
+                      </span>
                     </div>
 
                     {/* Status Indicator */}
                     {status && (
-                      <Badge 
+                      <Badge
                         className={`${
-                          status === 'completed'
-                            ? 'bg-[#00d2be] text-black'
-                            : 'bg-[#ffa500] text-black'
+                          status === "completed"
+                            ? "bg-[#00d2be] text-black"
+                            : "bg-[#ffa500] text-black"
                         } border-0 px-2 py-0.5 text-[10px]`}
                       >
-                        {status === 'completed' ? (
+                        {status === "completed" ? (
                           <>
                             <CheckCircle className="w-3 h-3 mr-1" />
                             COMPLETED
@@ -186,7 +218,9 @@ export function ConversationTabs() {
                   </div>
 
                   {/* Message Text */}
-                  <p className="text-sm text-white mb-3 font-medium">{message.text}</p>
+                  <p className="text-sm text-white mb-3 font-medium">
+                    {message.text}
+                  </p>
 
                   {/* Send Button */}
                   {!status && (
@@ -212,12 +246,16 @@ export function ConversationTabs() {
                     </div>
 
                     {/* AI Text */}
-                    <p className="text-sm text-[#00d2be] mb-3">{nextAIMessage.text}</p>
+                    <p className="text-sm text-[#00d2be] mb-3">
+                      {nextAIMessage.text}
+                    </p>
 
                     {/* Confidence Bar */}
                     {nextAIMessage.confidence && (
                       <div className="flex items-center gap-3">
-                        <span className="text-[10px] text-gray-500 f1-text w-24 flex-shrink-0">CONFIDENCE</span>
+                        <span className="text-[10px] text-gray-500 f1-text w-24 flex-shrink-0">
+                          CONFIDENCE
+                        </span>
                         <div className="flex-1 h-2 bg-[rgba(255,255,255,0.1)] rounded-full overflow-hidden">
                           <motion.div
                             initial={{ width: 0 }}
@@ -241,8 +279,12 @@ export function ConversationTabs() {
           {engineerMessages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-64 text-center">
               <User className="w-12 h-12 text-gray-600 mb-3" />
-              <p className="text-gray-500 f1-text text-sm">No engineer transmissions yet</p>
-              <p className="text-gray-600 text-xs mt-1">Press push-to-talk to send a message</p>
+              <p className="text-gray-500 f1-text text-sm">
+                No engineer transmissions yet
+              </p>
+              <p className="text-gray-600 text-xs mt-1">
+                Press push-to-talk to send a message
+              </p>
             </div>
           )}
         </div>

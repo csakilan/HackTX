@@ -1,30 +1,32 @@
-import { motion } from 'motion/react';
-import { useRaceStore } from '../store/useRaceStore';
-import { Mic, MicOff, AlertTriangle } from 'lucide-react';
-import { useState, useEffect, useRef } from 'react';
-import { transcribeAudio, textToSpeech } from '../services/speech';
-import { api } from '../services/api';
+import { motion } from "motion/react";
+import { useRaceStore } from "../store/useRaceStore";
+import { Mic, MicOff, AlertTriangle } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { transcribeAudio, textToSpeech } from "../services/speech";
+import { api } from "../services/api";
 
 export function EngineerPanel() {
   const { addMessage } = useRaceStore();
   const [isRecording, setIsRecording] = useState(false);
   const [isOverrideRecording, setIsOverrideRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [currentTranscription, setCurrentTranscription] = useState('');
-  
+  const [currentTranscription, setCurrentTranscription] = useState("");
+
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
   const isOverrideModeRef = useRef(false);
 
   // Calculate delay based on severity
-  const calculateDelayFromSeverity = (severity: 'high' | 'medium' | 'low'): number => {
-    switch(severity) {
-      case 'high':
+  const calculateDelayFromSeverity = (
+    severity: "high" | "medium" | "low"
+  ): number => {
+    switch (severity) {
+      case "high":
         return 0; // Immediate
-      case 'medium':
+      case "medium":
         return 3000; // 3 seconds
-      case 'low':
+      case "low":
         return 5000 + Math.random() * 1000; // 5-6 seconds
       default:
         return 3000;
@@ -34,10 +36,12 @@ export function EngineerPanel() {
   // Handle recording (works for both regular and override)
   useEffect(() => {
     const isActivelyRecording = isRecording || isOverrideRecording;
-    
+
     async function startRecording() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+        });
         streamRef.current = stream;
 
         let mimeType = "audio/webm;codecs=opus";
@@ -80,7 +84,7 @@ export function EngineerPanel() {
               // Step 1: Refine the message (remove filler, fix errors)
               console.log("✨ Refining message...");
               let refinedMessage = transcript;
-              
+
               try {
                 const refinement = await api.refineMessage(transcript);
                 refinedMessage = refinement.refined;
@@ -96,12 +100,12 @@ export function EngineerPanel() {
               if (isOverrideModeRef.current) {
                 // OVERRIDE: Send immediately to driver
                 console.log("⚠️ OVERRIDE MODE: Sending immediately to driver");
-                
+
                 // Add to messages with override flag
                 addMessage({
-                  sender: 'engineer',
+                  sender: "engineer",
                   text: refinedMessage,
-                  severity: 'high',
+                  severity: "high",
                   isOverride: true,
                 });
 
@@ -114,20 +118,26 @@ export function EngineerPanel() {
               } else {
                 // NORMAL: Classify severity using Gemini
                 console.log("📊 Classifying message severity...");
-                
+
                 try {
-                  const classification = await api.classifySeverity(refinedMessage);
+                  const classification = await api.classifySeverity(
+                    refinedMessage
+                  );
                   const severity = classification.severity;
                   const delay = calculateDelayFromSeverity(severity);
-                  
-                  console.log(`🏷️ Severity: ${severity.toUpperCase()} | Delay: ${(delay / 1000).toFixed(1)}s`);
+
+                  console.log(
+                    `🏷️ Severity: ${severity.toUpperCase()} | Delay: ${(
+                      delay / 1000
+                    ).toFixed(1)}s`
+                  );
 
                   const now = Date.now();
                   const deliveryTime = now + delay;
 
                   // Add ONCE with all metadata
                   addMessage({
-                    sender: 'engineer',
+                    sender: "engineer",
                     text: refinedMessage,
                     severity: severity,
                     createdAt: now,
@@ -144,16 +154,16 @@ export function EngineerPanel() {
                   }, delay);
                 } catch (classifyError) {
                   console.error("Failed to classify severity:", classifyError);
-                  
+
                   // Fallback to medium severity
-                  const severity = 'medium';
+                  const severity = "medium";
                   const delay = calculateDelayFromSeverity(severity);
-                  
+
                   const now = Date.now();
                   const deliveryTime = now + delay;
-                  
+
                   addMessage({
-                    sender: 'engineer',
+                    sender: "engineer",
                     text: refinedMessage,
                     severity: severity,
                     createdAt: now,
@@ -174,7 +184,7 @@ export function EngineerPanel() {
             console.error("Failed to transcribe engineer audio:", error);
           } finally {
             setIsProcessing(false);
-            setCurrentTranscription('');
+            setCurrentTranscription("");
           }
 
           // Clean up stream
@@ -255,8 +265,8 @@ export function EngineerPanel() {
             whileTap={{ scale: 0.95 }}
             className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 flex-shrink-0 ${
               isOverrideRecording
-                ? 'border-[#ff9500] bg-gradient-to-br from-[#ff9500] to-[#ff6b00] shadow-[0_0_15px_rgba(255,149,0,0.6),0_0_30px_rgba(255,149,0,0.3)] animate-pulse'
-                : 'border-[rgba(255,149,0,0.5)] bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] hover:border-[#ff9500]'
+                ? "border-[#ff9500] bg-gradient-to-br from-[#ff9500] to-[#ff6b00] shadow-[0_0_15px_rgba(255,149,0,0.6),0_0_30px_rgba(255,149,0,0.3)] animate-pulse"
+                : "border-[rgba(255,149,0,0.5)] bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] hover:border-[#ff9500]"
             }`}
           >
             {/* Pulse ring animation when active */}
@@ -268,10 +278,18 @@ export function EngineerPanel() {
                 transition={{ duration: 1, repeat: Infinity }}
               />
             )}
-            
+
             <div className="relative z-10 flex flex-col items-center justify-center h-full">
-              <AlertTriangle className={`w-10 h-10 mb-1 ${isOverrideRecording ? 'text-white' : 'text-gray-400'}`} />
-              <span className={`f1-text text-[10px] font-bold ${isOverrideRecording ? 'text-white' : 'text-gray-400'}`}>
+              <AlertTriangle
+                className={`w-10 h-10 mb-1 ${
+                  isOverrideRecording ? "text-white" : "text-gray-400"
+                }`}
+              />
+              <span
+                className={`f1-text text-[10px] font-bold ${
+                  isOverrideRecording ? "text-white" : "text-gray-400"
+                }`}
+              >
                 OVERRIDE
               </span>
             </div>
@@ -286,8 +304,8 @@ export function EngineerPanel() {
             whileTap={{ scale: 0.95 }}
             className={`relative w-24 h-24 rounded-full border-4 transition-all duration-300 flex-shrink-0 ${
               isRecording
-                ? 'border-[#e10600] bg-gradient-to-br from-[#e10600] to-[#b00500] glow-red-strong animate-pulse'
-                : 'border-[rgba(225,6,0,0.5)] bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] hover:border-[#e10600]'
+                ? "border-[#e10600] bg-gradient-to-br from-[#e10600] to-[#b00500] glow-red-strong animate-pulse"
+                : "border-[rgba(225,6,0,0.5)] bg-gradient-to-br from-[#2a2a2a] to-[#1a1a1a] hover:border-[#e10600]"
             }`}
           >
             {/* Pulse ring animation when active */}
@@ -314,25 +332,37 @@ export function EngineerPanel() {
         {/* Label */}
         <div className="text-center flex-shrink-0">
           <p className="f1-text text-white text-sm mb-0.5">
-            {isRecording || isOverrideRecording ? 'Recording...' : 'Push to Talk'}
+            {isRecording || isOverrideRecording
+              ? "Recording..."
+              : "Push to Talk"}
           </p>
           <p className="text-[10px] text-gray-500">
-            {isOverrideRecording ? 'Override: Immediate delivery' : 'Hold button to transmit'}
+            {isOverrideRecording
+              ? "Override: Immediate delivery"
+              : "Hold button to transmit"}
           </p>
         </div>
 
         {/* Live Transcription Box */}
         <div className="w-full flex-1 min-h-0 bg-[rgba(0,0,0,0.4)] border border-[rgba(225,6,0,0.3)] rounded-lg p-3 flex flex-col">
           <div className="flex items-center gap-2 mb-2 flex-shrink-0">
-            <div className={`w-2 h-2 rounded-full ${isRecording || isOverrideRecording ? 'bg-[#e10600] animate-pulse' : 'bg-gray-600'}`} />
-            <span className="f1-text text-xs text-gray-400">Live Transcription</span>
+            <div
+              className={`w-2 h-2 rounded-full ${
+                isRecording || isOverrideRecording
+                  ? "bg-[#e10600] animate-pulse"
+                  : "bg-gray-600"
+              }`}
+            />
+            <span className="f1-text text-xs text-gray-400">
+              Live Transcription
+            </span>
           </div>
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: currentTranscription ? 1 : 0.5 }}
             className="text-sm text-white flex-1 overflow-y-auto"
           >
-            {currentTranscription || 'Press and hold button to start...'}
+            {currentTranscription || "Press and hold button to start..."}
           </motion.div>
         </div>
       </div>

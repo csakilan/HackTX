@@ -1,8 +1,8 @@
-import { motion } from 'motion/react';
-import { useRaceStore } from '../store/useRaceStore';
-import { Cpu, Headphones, User, AlertTriangle } from 'lucide-react';
-import { Badge } from './ui/badge';
-import { useEffect, useRef, useState } from 'react';
+import { motion } from "motion/react";
+import { useRaceStore } from "../store/useRaceStore";
+import { Cpu, Headphones, User, AlertTriangle } from "lucide-react";
+import { Badge } from "./ui/badge";
+import { useEffect, useRef, useState } from "react";
 
 export function RadioFeed() {
   const messages = useRaceStore((state) => state.messages);
@@ -12,7 +12,7 @@ export function RadioFeed() {
   // Force re-render every 100ms to update which messages should be visible
   useEffect(() => {
     const interval = setInterval(() => {
-      setTick(t => t + 1);
+      setTick((t) => t + 1);
     }, 100);
     return () => clearInterval(interval);
   }, []);
@@ -25,16 +25,17 @@ export function RadioFeed() {
 
   // Filter messages: show ai, driver, and engineer messages that have been "sent"
   // Engineer messages are "sent" if they're override OR if their deliveryTime has passed
-  const filteredMessages = messages.filter(m => {
-    if (m.sender === 'ai' || m.sender === 'driver') {
+  const filteredMessages = messages.filter((m) => {
+    if (m.sender === "ai" || m.sender === "driver") {
       return true;
     }
-    if (m.sender === 'engineer') {
+    if (m.sender === "engineer") {
       // Show if override OR if delivery time has passed
       return m.isOverride || !m.deliveryTime || Date.now() >= m.deliveryTime;
     }
     return false;
-  });  return (
+  });
+  return (
     <div className="h-full flex flex-col bg-gradient-to-br from-[#1a1a1a] via-[#0d0d0d] to-[#1a1a1a] rounded-lg border border-[rgba(225,6,0,0.3)] overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#222] to-[#1a1a1a] px-4 py-3 border-b border-[rgba(225,6,0,0.3)] flex-shrink-0">
@@ -74,8 +75,8 @@ export function RadioFeed() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={`flex gap-3 ${
-                  message.sender === "driver" 
-                    ? "justify-start" 
+                  message.sender === "driver"
+                    ? "justify-start"
                     : message.sender === "engineer"
                     ? "justify-end"
                     : "justify-end"
