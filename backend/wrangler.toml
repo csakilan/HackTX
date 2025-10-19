@@ -1,0 +1,20 @@
+name = "hacktxcloudflare"
+main = "src/index.ts"
+compatibility_date = "2024-11-20"
+
+# Dev configuration
+[dev]
+port = 8787
+
+# Environment variables - Add your Gemini API key here
+[vars]
+GEMINI_API_KEY = "AIzaSyBiB-eHApzcFmjIE-PH0ymTH5XuAJvTKZM"
+ELEVENLABS_API_KEY = "sk_65403f8c8d83b6be7fe6ce847d41fe50c6856111adc67bab"
+
+[durable_objects]
+bindings = [{ name = "RACE_DO", class_name = "RaceDO" }]
+
+[[migrations]]
+tag = "v1"
+new_sqlite_classes = ["RaceDO"]
+

@@ -1,16 +1,25 @@
-import { DriverStandings } from './components/DriverStandings';
-import { RadioFeed } from './components/RadioFeed';
-import { EngineerPanel } from './components/EngineerPanel';
-import { DriverAudio } from './components/DriverAudio';
-import { ConversationTabs } from './components/ConversationTabs';
-import { FuelConsumption } from './components/FuelConsumption';
-import { ThrottleBrake } from './components/ThrottleBrake';
-import { TireTemperature } from './components/TireTemperature';
-import { BrakeTemperature } from './components/BrakeTemperature';
-import { ScrollButton } from './components/ScrollButton';
-import { motion } from 'motion/react';
+import { DriverStandings } from "./components/DriverStandings";
+import { RadioFeed } from "./components/RadioFeed";
+import { EngineerPanel } from "./components/EngineerPanel";
+import { DriverAudio } from "./components/DriverAudio";
+import { ConversationTabs } from "./components/ConversationTabs";
+import { FuelConsumption } from "./components/FuelConsumption";
+import { ThrottleBrake } from "./components/ThrottleBrake";
+import { TireTemperature } from "./components/TireTemperature";
+import { BrakeTemperature } from "./components/BrakeTemperature";
+import { ScrollButton } from "./components/ScrollButton";
+import { motion } from "motion/react";
+import { useEffect } from "react";
 
 export default function App() {
+  // Simple backend connection check
+  useEffect(() => {
+    fetch("http://localhost:8787/health")
+      .then((res) => res.json())
+      .then((data) => console.log("✅ Backend Connected:", data))
+      .catch((err) => console.error("❌ Backend Error:", err.message));
+  }, []);
+
   return (
     <div className="min-h-screen w-full bg-[#0d0d0d] overflow-y-auto">
       {/* Main Dashboard Section */}
@@ -72,17 +81,19 @@ export default function App() {
             transition={{ duration: 0.5 }}
             viewport={{ once: true }}
           >
-            <h1 className="f1-text text-4xl text-white mb-6 text-center">Telemetry Data</h1>
-            
+            <h1 className="f1-text text-4xl text-white mb-6 text-center">
+              Telemetry Data
+            </h1>
+
             {/* Telemetry Grid - 2x2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fuel Consumption */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <FuelConsumption />
               </motion.div>
@@ -93,7 +104,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <ThrottleBrake />
               </motion.div>
@@ -104,7 +115,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <TireTemperature />
               </motion.div>
@@ -115,7 +126,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <BrakeTemperature />
               </motion.div>
