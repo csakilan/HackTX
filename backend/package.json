@@ -1,0 +1,24 @@
+{
+  "name": "hacktxcloudflare",
+  "version": "1.0.0",
+  "description": "F1 Race WebSocket Simulator using Cloudflare Workers + Durable Objects",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "keywords": [
+    "cloudflare",
+    "workers",
+    "websocket",
+    "durable-objects",
+    "f1"
+  ],
+  "author": "",
+  "license": "MIT",
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20241022.0",
+    "typescript": "^5.3.3",
+    "wrangler": "^4.43.0"
+  }
+}
