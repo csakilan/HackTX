@@ -18,6 +18,10 @@ export interface Message {
   text: string;
   timestamp: string;
   confidence?: number;
+  severity?: 'high' | 'medium' | 'low';
+  createdAt?: number; // Timestamp when message was created (for countdown)
+  deliveryTime?: number; // Timestamp when message should be delivered
+  isOverride?: boolean; // Whether this was an override message
 }
 
 export interface Recommendation {

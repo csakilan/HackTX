@@ -2,8 +2,81 @@ import { motion } from 'motion/react';
 import { useRaceStore } from '../store/useRaceStore';
 import { Badge } from './ui/badge';
 import { Button } from './ui/button';
-import { Send, Cpu, User, CheckCircle, Clock } from 'lucide-react';
+import { Send, Cpu, User, CheckCircle, Clock, Timer } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
+
+// Countdown Timer Component
+function CountdownTimer({ deliveryTime, createdAt }: { deliveryTime: number; createdAt?: number }) {
+  const [timeLeft, setTimeLeft] = useState(0);
+  const [isComplete, setIsComplete] = useState(false);
+  const [progress, setProgress] = useState(100);
+
+  useEffect(() => {
+    const totalTime = createdAt ? deliveryTime - createdAt : 0;
+    
+    const updateTimer = () => {
+      const now = Date.now();
+      const remaining = Math.max(0, deliveryTime - now);
+      setTimeLeft(remaining);
+      
+      // Calculate progress percentage
+      if (totalTime > 0) {
+        const elapsed = now - (createdAt || now);
+        const progressPercent = Math.max(0, Math.min(100, (elapsed / totalTime) * 100));
+        setProgress(progressPercent);
+      }
+      
+      if (remaining === 0 && !isComplete) {
+        setIsComplete(true);
+      }
+    };
+
+    // Update immediately
+    updateTimer();
+
+    // Update every 100ms for smooth countdown
+    const interval = setInterval(updateTimer, 100);
+
+    return () => clearInterval(interval);
+  }, [deliveryTime, createdAt, isComplete]);
+
+  if (isComplete) {
+    return (
+      <Badge className="bg-[#00d2be] text-black border-0 px-2 py-0.5 text-[10px]">
+        <CheckCircle className="w-3 h-3 mr-1" />
+        SENT
+      </Badge>
+    );
+  }
+
+  const seconds = (timeLeft / 1000).toFixed(1);
+  const colorClass = timeLeft < 1000 ? 'text-[#ff0000]' : timeLeft < 2000 ? 'text-[#ffa500]' : 'text-[#00d2be]';
+  const borderColor = timeLeft < 1000 ? 'border-[#ff0000]' : timeLeft < 2000 ? 'border-[#ffa500]' : 'border-[#00d2be]';
+
+  return (
+    <div className="flex items-center gap-2">
+      <Badge className={`bg-[rgba(0,0,0,0.5)] border ${borderColor} px-2 py-0.5 text-[10px] ${colorClass} ${timeLeft < 2000 ? 'animate-pulse' : ''}`}>
+        <Timer className="w-3 h-3 mr-1" />
+        {seconds}s
+      </Badge>
+      {/* Progress Bar */}
+      <div className="w-16 h-1.5 bg-[rgba(255,255,255,0.1)] rounded-full overflow-hidden">
+        <motion.div
+          className={`h-full ${
+            timeLeft < 1000 
+              ? 'bg-[#ff0000]' 
+              : timeLeft < 2000 
+              ? 'bg-[#ffa500]' 
+              : 'bg-[#00d2be]'
+          }`}
+          initial={{ width: '0%' }}
+          animate={{ width: `${progress}%` }}
+          transition={{ duration: 0.1 }}
+        />
+      </div>
+    </div>
+  );
+}
 
 export function ConversationTabs() {
   const { messages } = useRaceStore();
@@ -16,7 +89,8 @@ export function ConversationTabs() {
     }
   }, [messages]);
 
-  const engineerMessages = messages.filter(m => m.sender === 'engineer');
+  // Filter out override messages from Engineering Feed (they go straight to Radio)
+  const engineerMessages = messages.filter(m => m.sender === 'engineer' && !m.isOverride);
 
   const handleSend = (messageId: string) => {
     setMessageStatuses(prev => ({ ...prev, [messageId]: 'in-progress' }));
@@ -58,11 +132,32 @@ export function ConversationTabs() {
                 <div className="p-4 border-b border-[rgba(225,6,0,0.2)]">
                   {/* Header */}
                   <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <Badge className="bg-[#e10600] text-white border-0 px-2 py-0.5 text-[10px] glow-red">
                         <User className="w-3 h-3 mr-1" />
                         ENGINEER
                       </Badge>
+                      {/* Severity Badge */}
+                      {message.severity && (
+                        <Badge 
+                          className={`border-0 px-2 py-0.5 text-[10px] ${
+                            message.severity === 'high'
+                              ? 'bg-[#ff0000] text-white'
+                              : message.severity === 'medium'
+                              ? 'bg-[#ffa500] text-black'
+                              : 'bg-[#00d2be] text-black'
+                          }`}
+                        >
+                          {message.severity.toUpperCase()}
+                        </Badge>
+                      )}
+                      {/* Countdown Timer */}
+                      {message.deliveryTime && (
+                        <CountdownTimer 
+                          deliveryTime={message.deliveryTime} 
+                          createdAt={message.createdAt}
+                        />
+                      )}
                       <span className="text-[10px] text-gray-500 f1-text">{message.timestamp}</span>
                     </div>
 

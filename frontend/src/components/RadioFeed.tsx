@@ -1,12 +1,21 @@
-import { motion } from "motion/react";
-import { useRaceStore } from "../store/useRaceStore";
-import { Cpu, Headphones } from "lucide-react";
-import { Badge } from "./ui/badge";
-import { useEffect, useRef } from "react";
+import { motion } from 'motion/react';
+import { useRaceStore } from '../store/useRaceStore';
+import { Cpu, Headphones, User, AlertTriangle } from 'lucide-react';
+import { Badge } from './ui/badge';
+import { useEffect, useRef, useState } from 'react';
 
 export function RadioFeed() {
   const messages = useRaceStore((state) => state.messages);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [, setTick] = useState(0);
+
+  // Force re-render every 100ms to update which messages should be visible
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTick(t => t + 1);
+    }, 100);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -14,11 +23,18 @@ export function RadioFeed() {
     }
   }, [messages]);
 
-  const filteredMessages = messages.filter(
-    (m) => m.sender === "ai" || m.sender === "driver"
-  );
-
-  return (
+  // Filter messages: show ai, driver, and engineer messages that have been "sent"
+  // Engineer messages are "sent" if they're override OR if their deliveryTime has passed
+  const filteredMessages = messages.filter(m => {
+    if (m.sender === 'ai' || m.sender === 'driver') {
+      return true;
+    }
+    if (m.sender === 'engineer') {
+      // Show if override OR if delivery time has passed
+      return m.isOverride || !m.deliveryTime || Date.now() >= m.deliveryTime;
+    }
+    return false;
+  });  return (
     <div className="h-full flex flex-col bg-gradient-to-br from-[#1a1a1a] via-[#0d0d0d] to-[#1a1a1a] rounded-lg border border-[rgba(225,6,0,0.3)] overflow-hidden">
       {/* Header */}
       <div className="bg-gradient-to-r from-[#222] to-[#1a1a1a] px-4 py-3 border-b border-[rgba(225,6,0,0.3)] flex-shrink-0">
@@ -58,23 +74,42 @@ export function RadioFeed() {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.05 }}
                 className={`flex gap-3 ${
-                  message.sender === "driver" ? "justify-start" : "justify-end"
+                  message.sender === "driver" 
+                    ? "justify-start" 
+                    : message.sender === "engineer"
+                    ? "justify-end"
+                    : "justify-end"
                 }`}
               >
                 <div
                   className={`max-w-[80%] rounded-lg p-3 backdrop-blur-sm ${
                     message.sender === "driver"
                       ? "bg-[rgba(0,146,255,0.15)] border border-[rgba(0,146,255,0.3)]"
+                      : message.sender === "engineer"
+                      ? "bg-[rgba(225,6,0,0.15)] border border-[rgba(225,6,0,0.3)]"
                       : "bg-[rgba(0,210,190,0.15)] border border-[rgba(0,210,190,0.3)]"
                   }`}
                 >
                   {/* Header with badge and time */}
-                  <div className="flex items-center gap-2 mb-1">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
                     {message.sender === "driver" ? (
                       <Badge className="bg-[#0090ff] text-white border-0 px-2 py-0 text-[10px] glow-blue">
                         <Headphones className="w-3 h-3 mr-1" />
                         DRIVER
                       </Badge>
+                    ) : message.sender === "engineer" ? (
+                      <>
+                        <Badge className="bg-[#e10600] text-white border-0 px-2 py-0 text-[10px] glow-red">
+                          <User className="w-3 h-3 mr-1" />
+                          ENGINEER
+                        </Badge>
+                        {message.isOverride && (
+                          <Badge className="bg-[#ff0000] text-white border-0 px-2 py-0 text-[10px] animate-pulse">
+                            <AlertTriangle className="w-3 h-3 mr-1" />
+                            OVERRIDE
+                          </Badge>
+                        )}
+                      </>
                     ) : (
                       <Badge className="bg-[#00d2be] text-black border-0 px-2 py-0 text-[10px] glow-green">
                         <Cpu className="w-3 h-3 mr-1" />

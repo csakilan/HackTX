@@ -745,7 +745,7 @@ function answerQuestion(q: string, tick: TickMessage): string {
 // Worker Entry Point
 // ============================================================================
 
-import { askGemini, fallbackAnswer, getRaceStartCommentary, type TelemetryContext } from "./gemini";
+import { askGemini, fallbackAnswer, getRaceStartCommentary, classifyMessageSeverity, refineEngineerMessage, type TelemetryContext } from "./gemini";
 
 interface Env {
   RACE_DO: DurableObjectNamespace;
@@ -934,6 +934,93 @@ export default {
           }
         });
       }
+    }
+
+    // Handle /classify-severity endpoint
+    if (url.pathname === "/classify-severity") {
+      const message = url.searchParams.get("message") || "";
+      console.log("🏷️ SEVERITY CLASSIFICATION REQUEST:", message);
+      
+      // Fetch latest tick from Durable Object
+      const id = env.RACE_DO.idFromName("global-race");
+      const stub = env.RACE_DO.get(id);
+      const doResponse = await stub.fetch(new Request("https://do/internal/latest"));
+      const latestTick: TickMessage | null = await doResponse.json();
+      
+      let severity: "high" | "medium" | "low" = "medium";
+      
+      if (latestTick === null) {
+        severity = "medium"; // Default if no telemetry
+      } else {
+        // Build telemetry context for Gemini
+        const telemetryContext: TelemetryContext = {
+          carlosTelemetry: latestTick.carlosTelemetry,
+          leaderboard: latestTick.leaderboard,
+          raceTime: latestTick.raceTime,
+        };
+        
+        // Classify message severity using Gemini
+        if (env.GEMINI_API_KEY && env.GEMINI_API_KEY !== "your-gemini-api-key-here") {
+          try {
+            severity = await classifyMessageSeverity(message, telemetryContext, {
+              apiKey: env.GEMINI_API_KEY,
+              model: "gemini-2.5-flash",
+            });
+            console.log("🏷️ SEVERITY CLASSIFICATION:", severity);
+          } catch (error) {
+            const errorMessage = error instanceof Error ? error.message : String(error);
+            console.error("💥 SEVERITY CLASSIFICATION ERROR:", errorMessage, "- Using default 'medium'");
+            severity = "medium";
+          }
+        }
+      }
+      
+      const responseData = {
+        message: message,
+        severity: severity,
+      };
+      
+      return new Response(JSON.stringify(responseData), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
+    }
+
+    // Handle /refine-message endpoint
+    if (url.pathname === "/refine-message") {
+      const message = url.searchParams.get("message") || "";
+      console.log("✨ MESSAGE REFINEMENT REQUEST:", message);
+      
+      let refinedMessage = message;
+      
+      // Refine message using Gemini
+      if (env.GEMINI_API_KEY && env.GEMINI_API_KEY !== "your-gemini-api-key-here") {
+        try {
+          refinedMessage = await refineEngineerMessage(message, {
+            apiKey: env.GEMINI_API_KEY,
+            model: "gemini-2.5-flash",
+          });
+          console.log("✨ REFINED MESSAGE:", refinedMessage);
+        } catch (error) {
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          console.error("💥 MESSAGE REFINEMENT ERROR:", errorMessage, "- Using original");
+          refinedMessage = message;
+        }
+      }
+      
+      const responseData = {
+        original: message,
+        refined: refinedMessage,
+      };
+      
+      return new Response(JSON.stringify(responseData), {
+        headers: {
+          "Content-Type": "application/json",
+          "Access-Control-Allow-Origin": "*",
+        },
+      });
     }
 
     // Get or create the Durable Object instance

@@ -16,6 +16,18 @@ export const api = {
     return await response.json();
   },
 
+  // Classify message severity
+  async classifySeverity(message: string): Promise<{ message: string; severity: "high" | "medium" | "low" }> {
+    const response = await fetch(`${BACKEND_URL}/classify-severity?message=${encodeURIComponent(message)}`);
+    return await response.json();
+  },
+
+  // Refine engineer message (remove filler, fix errors)
+  async refineMessage(message: string): Promise<{ original: string; refined: string }> {
+    const response = await fetch(`${BACKEND_URL}/refine-message?message=${encodeURIComponent(message)}`);
+    return await response.json();
+  },
+
   // Control race (start, stop, reset)
   async controlRace(action: 'start' | 'stop' | 'reset'): Promise<string> {
     const response = await fetch(`${BACKEND_URL}/control/${action}`, {

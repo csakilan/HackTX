@@ -250,3 +250,156 @@ Generate an exciting, brief race start commentary (2-3 sentences max) about the 
     throw new Error(`GEMINI_RACE_START_FAILED: ${errorMessage}`);
   }
 }
+
+/**
+ * Classify engineer message severity based on race context
+ * Returns: "high", "medium", or "low"
+ */
+export async function classifyMessageSeverity(
+  message: string,
+  context: TelemetryContext,
+  config: GeminiConfig
+): Promise<"high" | "medium" | "low"> {
+  const model = config.model || "gemini-2.5-flash";
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
+
+  const { carlosTelemetry, leaderboard, raceTime } = context;
+  
+  // Find Carlos's position
+  const carlosPosition = leaderboard.findIndex((entry) => entry.name === carlosTelemetry.name) + 1;
+  const carlosLeaderboardEntry = leaderboard.find((entry) => entry.name === carlosTelemetry.name);
+
+  // Simplified prompt for faster classification
+  const prompt = `F1 Race Engineer Message Classifier
+
+DRIVER: Carlos Sainz | P${carlosPosition} | Lap ${carlosTelemetry.currentLap}
+CRITICAL DATA: Brake ${carlosTelemetry.brakeTempC.toFixed(0)}°C | Tire ${carlosTelemetry.tireTempC.toFixed(0)}°C | Fuel ${carlosTelemetry.fuelRemainingL.toFixed(1)}L
+${carlosLeaderboardEntry ? `GAP: ${carlosLeaderboardEntry.gap.toFixed(1)}s to leader` : ""}
+
+MESSAGE: "${message}"
+
+CLASSIFY AS:
+- "high" = Safety risk, mechanical failure, immediate pit call, critical fuel/tire, safety car, overtake now
+- "medium" = Strategy info, setting changes, gaps, weather, non-critical issues
+- "low" = Position updates, lap times, motivation, general feedback
+
+OUTPUT ONE WORD ONLY:`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("🚨 GEMINI_SEVERITY_ERROR:", errorText);
+      // Fallback to medium severity on error
+      return "medium";
+    }
+
+    const data = await response.json();
+    const severityText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.toLowerCase().trim() || "medium";
+    
+    // Parse the response and validate
+    if (severityText.includes("high")) {
+      return "high";
+    } else if (severityText.includes("low")) {
+      return "low";
+    } else {
+      return "medium";
+    }
+  } catch (error) {
+    console.error("🚨 GEMINI_SEVERITY_FAILED:", error);
+    // Fallback to medium severity on error
+    return "medium";
+  }
+}
+
+/**
+ * Refine engineer message - remove filler words, correct errors, make concise
+ */
+export async function refineEngineerMessage(
+  message: string,
+  config: GeminiConfig
+): Promise<string> {
+  const model = config.model || "gemini-2.5-flash";
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
+
+  const prompt = `F1 Radio Message Editor
+
+ORIGINAL: "${message}"
+
+TASK: Fix this F1 engineer radio message:
+1. Remove filler words (um, uh, like, you know, etc.)
+2. Fix speech-to-text errors (homophones, F1 terms)
+3. Make concise - keep only essential info
+4. Use proper F1 terminology
+5. Keep it brief (radio transmission style)
+
+COMMON FIXES:
+- "breaks" → "brakes"
+- "tires"/"tyres" → standardize
+- "box box box" → keep exactly
+- "DRS" capitalized
+- Driver names correct
+- Numbers clear
+
+OUTPUT: Refined message only, no explanation.`;
+
+  try {
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              {
+                text: prompt,
+              },
+            ],
+          },
+        ],
+        generationConfig: {
+          temperature: 0.3, // Lower temperature for more consistent corrections
+          maxOutputTokens: 100, // Keep it short
+        },
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("🚨 GEMINI_REFINE_ERROR:", errorText);
+      // Return original message on error
+      return message;
+    }
+
+    const data = await response.json();
+    const refinedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || message;
+    
+    // Remove quotes if Gemini added them
+    const cleaned = refinedText.replace(/^["']|["']$/g, '').trim();
+    
+    return cleaned || message;
+  } catch (error) {
+    console.error("🚨 GEMINI_REFINE_FAILED:", error);
+    // Return original message on error
+    return message;
+  }
+}
