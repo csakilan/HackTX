@@ -7,6 +7,8 @@ import { api } from "../services/api";
 export function DriverStandings() {
   const drivers = useRaceStore((state) => state.drivers);
   const setDrivers = useRaceStore((state) => state.setDrivers);
+  const updateTelemetry = useRaceStore((state) => state.updateTelemetry);
+  const updateFuelData = useRaceStore((state) => state.updateFuelData);
   const [isRaceActive, setIsRaceActive] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [raceTime, setRaceTime] = useState(0);
@@ -56,6 +58,15 @@ export function DriverStandings() {
             })
           );
           setDrivers(updatedDrivers);
+
+          // Update telemetry data for Carlos Sainz
+          if (data.carlosTelemetry) {
+            console.log('🏎️ Received Carlos telemetry:', data.carlosTelemetry);
+            updateTelemetry(data.carlosTelemetry);
+            
+            // Update fuel data for the current lap
+            updateFuelData(data.carlosTelemetry.currentLap, data.carlosTelemetry.fuelRemainingL);
+          }
         }
       },
       // onError callback
@@ -206,7 +217,7 @@ export function DriverStandings() {
           {/* Table Body */}
           <tbody style={{ height: "calc(100% - 40px)" }}>
             {drivers.map((driver, index) => {
-              const isCarlosSainz = driver.name === "C. SAINZ";
+              const isCarlosSainz = driver.name === "Carlos Sainz";
               return (
                 <motion.tr
                   key={driver.position}

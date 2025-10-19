@@ -61,6 +61,7 @@ interface RaceStore {
   waveformData: number[];
   telemetryData: TelemetryData[];
   fuelData: { lap: number; fuel: number }[];
+  currentLap: number;
   
   setDrivers: (drivers: Driver[]) => void;
   setIsTranscribing: (value: boolean) => void;
@@ -70,6 +71,23 @@ interface RaceStore {
   updateWaveform: () => void;
   sendMessage: (messageId: string) => void;
   sendRecommendation: (recId: string) => void;
+  updateTelemetry: (telemetry: CarlosTelemetry) => void;
+  updateFuelData: (lap: number, fuel: number) => void;
+}
+
+interface CarlosTelemetry {
+  name: string;
+  team: string;
+  speedKph: number;
+  throttlePct: number;
+  brakePct: number;
+  brakeTempC: number;
+  tireTempC: number;
+  fuelRemainingL: number;
+  currentLap: number;
+  pitLap: number;
+  inPit: boolean;
+  trackMeters: number;
 }
 
 const mockDrivers: Driver[] = [
@@ -134,6 +152,7 @@ export const useRaceStore = create<RaceStore>((set) => ({
   waveformData: Array.from({ length: 50 }, () => Math.random() * 40 + 10),
   telemetryData: generateTelemetryData(),
   fuelData: mockFuelData,
+  currentLap: 1,
   
   setDrivers: (drivers) => set({ drivers }),
   
@@ -148,20 +167,6 @@ export const useRaceStore = create<RaceStore>((set) => ({
       timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
     };
     set((state) => ({ messages: [...state.messages, newMessage] }));
-    
-    // Auto-generate AI response for engineer messages
-    if (message.sender === 'engineer') {
-      setTimeout(() => {
-        const aiResponse: Message = {
-          id: (Date.now() + 1).toString(),
-          sender: 'ai',
-          text: `Confirmed: "${message.text}". Analysis in progress.`,
-          timestamp: new Date().toLocaleTimeString('en-US', { hour12: false }),
-          confidence: Math.floor(Math.random() * 20) + 80,
-        };
-        set((state) => ({ messages: [...state.messages, aiResponse] }));
-      }, 1000);
-    }
   },
   
   addRecommendation: (recommendation) => {
@@ -179,11 +184,62 @@ export const useRaceStore = create<RaceStore>((set) => ({
   
   sendMessage: (messageId) => {
     console.log('Sending message:', messageId);
-    // In a real app, this would send to backend
   },
   
   sendRecommendation: (recId) => {
     console.log('Sending recommendation:', recId);
-    // In a real app, this would send to backend
+  },
+
+  updateTelemetry: (telemetry: CarlosTelemetry) => {
+    console.log('🔧 updateTelemetry called:', telemetry.currentLap, 'lap', telemetry.trackMeters, 'm');
+    set((state) => {
+      const newDataPoint: TelemetryData = {
+        lap: telemetry.currentLap,
+        distance: telemetry.trackMeters / 1000, // Convert meters to km
+        fuelRemaining: telemetry.fuelRemainingL,
+        throttle: telemetry.throttlePct,
+        brakePressure: telemetry.brakePct,
+        tireTemps: {
+          frontLeft: telemetry.tireTempC + (Math.random() - 0.5) * 2,
+          frontRight: telemetry.tireTempC + (Math.random() - 0.5) * 2,
+          rearLeft: telemetry.tireTempC + (Math.random() - 0.5) * 3,
+          rearRight: telemetry.tireTempC + (Math.random() - 0.5) * 3,
+        },
+        brakeTemps: {
+          frontLeft: telemetry.brakeTempC + (Math.random() - 0.5) * 20,
+          frontRight: telemetry.brakeTempC + (Math.random() - 0.5) * 20,
+          rearLeft: telemetry.brakeTempC * 0.85 + (Math.random() - 0.5) * 15,
+          rearRight: telemetry.brakeTempC * 0.85 + (Math.random() - 0.5) * 15,
+        },
+      };
+
+      // Keep last 100 data points for smooth graphs
+      const newTelemetryData = [...state.telemetryData, newDataPoint].slice(-100);
+
+      console.log('📈 Telemetry data points:', newTelemetryData.length);
+
+      return {
+        telemetryData: newTelemetryData,
+        currentLap: telemetry.currentLap,
+      };
+    });
+  },
+
+  updateFuelData: (lap: number, fuel: number) => {
+    console.log('⛽ updateFuelData called: Lap', lap, 'Fuel:', fuel, 'L');
+    set((state) => {
+      const existingIndex = state.fuelData.findIndex(d => d.lap === lap);
+      if (existingIndex >= 0) {
+        // Update existing lap data
+        const newFuelData = [...state.fuelData];
+        newFuelData[existingIndex] = { lap, fuel };
+        return { fuelData: newFuelData };
+      } else {
+        // Add new lap data
+        const newFuelData = [...state.fuelData, { lap, fuel }].sort((a, b) => a.lap - b.lap);
+        console.log('📊 Fuel data points:', newFuelData.length);
+        return { fuelData: newFuelData };
+      }
+    });
   },
 }));

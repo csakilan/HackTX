@@ -86,14 +86,14 @@ export default function App() {
             </h1>
 
             {/* Telemetry Grid - 2x2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
               {/* Fuel Consumption */}
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <FuelConsumption />
               </motion.div>
@@ -104,7 +104,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <ThrottleBrake />
               </motion.div>
@@ -115,7 +115,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <TireTemperature />
               </motion.div>
@@ -126,7 +126,7 @@ export default function App() {
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.4 }}
                 viewport={{ once: true }}
-                className="h-[400px]"
+                className="h-[500px]"
               >
                 <BrakeTemperature />
               </motion.div>

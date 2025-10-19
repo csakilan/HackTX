@@ -229,7 +229,7 @@ export function DriverAudio() {
         <div className="flex items-center justify-between">
           <h3 className="f1-text text-white flex items-center gap-2 text-sm">
             <Radio className="w-4 h-4" />
-            Driver Audio (Live)
+            DRIVER AUDIO
           </h3>
           <Button
             onClick={toggleSpeak}
@@ -266,7 +266,7 @@ export function DriverAudio() {
       {/* Content */}
       <div className="flex-1 p-4 flex flex-col gap-3 overflow-hidden">
         {/* Waveform Visualization */}
-        <div className="flex-[2] min-h-0 bg-[rgba(0,0,0,0.4)] rounded-lg border border-[rgba(0,146,255,0.2)] overflow-hidden relative">
+        <div className="flex-1 min-h-0 bg-[rgba(0,0,0,0.4)] rounded-lg border border-[rgba(0,146,255,0.2)] overflow-hidden relative">
           {/* Grid lines for effect */}
           <div className="absolute inset-0 opacity-10">
             {Array.from({ length: 10 }).map((_, i) => (
@@ -317,22 +317,6 @@ export function DriverAudio() {
               </span>
             </motion.div>
           )}
-        </div>
-
-        {/* Mini Transcript Preview */}
-        <div className="flex-1 min-h-0 bg-[rgba(0,0,0,0.4)] border border-[rgba(0,146,255,0.2)] rounded-lg p-3 flex flex-col">
-          <div className="flex items-center gap-2 mb-2 flex-shrink-0">
-            <div className="w-1.5 h-1.5 rounded-full bg-[#0090ff]" />
-            <span className="f1-text text-xs text-gray-400">
-              Last Transmission
-            </span>
-          </div>
-          <p className="text-xs text-white mb-1 flex-1 overflow-y-auto">
-            "Copy that. How are we looking on strategy?"
-          </p>
-          <p className="text-[10px] text-gray-500 f1-text flex-shrink-0">
-            14:34:22
-          </p>
         </div>
       </div>
     </div>
