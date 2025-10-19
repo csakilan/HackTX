@@ -27,6 +27,26 @@ export interface Recommendation {
   timestamp: string;
 }
 
+export interface TelemetryData {
+  lap: number;
+  distance: number;
+  fuelRemaining: number;
+  throttle: number;
+  brakePressure: number;
+  tireTemps: {
+    frontLeft: number;
+    frontRight: number;
+    rearLeft: number;
+    rearRight: number;
+  };
+  brakeTemps: {
+    frontLeft: number;
+    frontRight: number;
+    rearLeft: number;
+    rearRight: number;
+  };
+}
+
 interface RaceStore {
   drivers: Driver[];
   messages: Message[];
@@ -34,6 +54,8 @@ interface RaceStore {
   isTranscribing: boolean;
   currentTranscription: string;
   waveformData: number[];
+  telemetryData: TelemetryData[];
+  fuelData: { lap: number; fuel: number }[];
   
   setIsTranscribing: (value: boolean) => void;
   setCurrentTranscription: (text: string) => void;
@@ -70,13 +92,49 @@ const initialRecommendations: Recommendation[] = [
   { id: 'r3', type: 'Pace', text: 'Target lap time: 1:32.5 to maintain P1', confidence: 91, timestamp: '14:30:45' },
 ];
 
-export const useRaceStore = create<RaceStore>((set, get) => ({
+// Generate telemetry data for one lap (100 data points)
+const generateTelemetryData = (): TelemetryData[] => {
+  const data: TelemetryData[] = [];
+  for (let i = 0; i < 100; i++) {
+    const distance = i / 100; // 0 to 1 (representing % of lap)
+    data.push({
+      lap: 15,
+      distance: distance * 5.5, // Assuming 5.5km lap
+      fuelRemaining: 85 - (distance * 2), // Fuel depletes over lap
+      throttle: Math.sin(distance * Math.PI * 4) * 50 + 50, // 0-100%
+      brakePressure: distance % 0.2 < 0.05 ? Math.random() * 80 + 20 : Math.random() * 10, // Braking zones
+      tireTemps: {
+        frontLeft: 85 + Math.sin(distance * Math.PI * 2) * 10 + Math.random() * 5,
+        frontRight: 87 + Math.sin(distance * Math.PI * 2) * 10 + Math.random() * 5,
+        rearLeft: 92 + Math.sin(distance * Math.PI * 2) * 8 + Math.random() * 5,
+        rearRight: 90 + Math.sin(distance * Math.PI * 2) * 8 + Math.random() * 5,
+      },
+      brakeTemps: {
+        frontLeft: 320 + (distance % 0.2 < 0.05 ? Math.random() * 180 : -Math.random() * 20),
+        frontRight: 315 + (distance % 0.2 < 0.05 ? Math.random() * 180 : -Math.random() * 20),
+        rearLeft: 280 + (distance % 0.2 < 0.05 ? Math.random() * 120 : -Math.random() * 15),
+        rearRight: 275 + (distance % 0.2 < 0.05 ? Math.random() * 120 : -Math.random() * 15),
+      },
+    });
+  }
+  return data;
+};
+
+// Fuel consumption over laps
+const mockFuelData = Array.from({ length: 25 }, (_, i) => ({
+  lap: i + 1,
+  fuel: 110 - (i * 3.2) - Math.random() * 2, // Starting at 110kg, consuming ~3.2kg per lap
+}));
+
+export const useRaceStore = create<RaceStore>((set) => ({
   drivers: mockDrivers,
   messages: initialMessages,
   recommendations: initialRecommendations,
   isTranscribing: false,
   currentTranscription: '',
   waveformData: Array.from({ length: 50 }, () => Math.random() * 40 + 10),
+  telemetryData: generateTelemetryData(),
+  fuelData: mockFuelData,
   
   setIsTranscribing: (value) => set({ isTranscribing: value }),
   
