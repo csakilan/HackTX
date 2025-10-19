@@ -36,17 +36,19 @@ export interface TelemetryContext {
 
 /**
  * Call Gemini API to answer race engineer questions based on telemetry
+ * Using REST API format as per official documentation
  */
 export async function askGemini(
   question: string,
   context: TelemetryContext,
   config: GeminiConfig
 ): Promise<string> {
-  const model = config.model || "gemini-pro";
+  const model = config.model || "gemini-2.5-flash";
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
 
   // Build the system prompt with telemetry context
   const systemPrompt = buildRaceEngineerPrompt(context);
+  const fullPrompt = `${systemPrompt}\n\nDriver question: "${question}"`;
 
   try {
     const response = await fetch(apiUrl, {
@@ -59,49 +61,22 @@ export async function askGemini(
           {
             parts: [
               {
-                text: systemPrompt,
-              },
-              {
-                text: `Driver question: "${question}"`,
+                text: fullPrompt,
               },
             ],
           },
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 150,
-          topP: 0.9,
-          topK: 40,
-        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      const errorObj = JSON.parse(errorText);
-      
-      // Special terminal commands for different error types
-      if (response.status === 429) {
-        console.error("🚨 GEMINI_QUOTA_EXCEEDED: API quota/rate limit hit");
-        throw new Error(`GEMINI_QUOTA_EXCEEDED: ${errorObj.error?.message || errorText}`);
-      } else if (response.status === 400) {
-        console.error("🚨 GEMINI_BAD_REQUEST: Invalid request parameters");
-        throw new Error(`GEMINI_BAD_REQUEST: ${errorObj.error?.message || errorText}`);
-      } else if (response.status === 404) {
-        console.error("🚨 GEMINI_MODEL_NOT_FOUND: Model not available");
-        throw new Error(`GEMINI_MODEL_NOT_FOUND: ${errorObj.error?.message || errorText}`);
-      } else {
-        console.error(`🚨 GEMINI_API_ERROR_${response.status}:`, errorText);
-        throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorObj.error?.message || errorText}`);
-      }
+      console.error("🚨 GEMINI_ERROR:", errorText);
+      throw new Error(`GEMINI_API_ERROR: ${errorText}`);
     }
 
     const data = await response.json();
-
-    // Extract the generated text from Gemini's response
-    const generatedText =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text || "Say again?";
-
+    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text || "Say again?";
     return generatedText.trim();
   } catch (error) {
     console.error("🚨 GEMINI_CONNECTION_FAILED:", error);
@@ -123,23 +98,34 @@ function buildRaceEngineerPrompt(context: TelemetryContext): string {
     (entry) => entry.name === carlosTelemetry.name
   );
 
-  return `You are a Formula 1 race engineer for ${carlosTelemetry.team}. 
-Your driver is ${carlosTelemetry.name}. You communicate over team radio with short, professional responses.
+  // Build leaderboard display
+  const leaderboardDisplay = leaderboard.map((entry, idx) => {
+    const pos = idx + 1;
+    const isOurDriver = entry.name === carlosTelemetry.name;
+    const marker = isOurDriver ? " ← YOU" : "";
+    return `  P${pos}. ${entry.name} | Lap ${entry.lap} | Gap: ${entry.gap.toFixed(3)}s | Int: ${entry.interval.toFixed(3)}s${marker}`;
+  }).join('\n');
 
-CURRENT RACE SITUATION (${Math.floor(raceTime)}s elapsed):
-- Position: P${carlosPosition}
-- Current Lap: ${carlosTelemetry.currentLap}
-- Planned Pit Lap: ${carlosTelemetry.pitLap}
+  return `You are a Formula 1 race engineer for Ferrari, working with driver Carlos Sainz (car #55). 
+You are CARLOS SAINZ'S dedicated engineer. You communicate over team radio with short, professional responses.
+
+CARLOS SAINZ - CURRENT RACE SITUATION (${Math.floor(raceTime)}s elapsed):
+- Your Position: P${carlosPosition}
+- Your Current Lap: ${carlosTelemetry.currentLap}
+- Your Planned Pit Lap: ${carlosTelemetry.pitLap}
 - In Pit: ${carlosTelemetry.inPit ? "YES" : "NO"}
-${carlosLeaderboardEntry ? `- Gap to Leader: ${carlosLeaderboardEntry.gap.toFixed(1)}s` : ""}
+${carlosLeaderboardEntry ? `- Your Gap to Leader: ${carlosLeaderboardEntry.gap.toFixed(3)}s` : ""}
 
-LIVE TELEMETRY:
-- Speed: ${carlosTelemetry.speedKph.toFixed(0)} kph
-- Throttle: ${carlosTelemetry.throttlePct.toFixed(0)}%
-- Brake: ${carlosTelemetry.brakePct.toFixed(0)}%
-- Brake Temperature: ${carlosTelemetry.brakeTempC.toFixed(0)}°C (optimal: 300-500°C, critical: >600°C)
-- Tire Temperature: ${carlosTelemetry.tireTempC.toFixed(0)}°C (optimal: 90-110°C, critical: >120°C)
-- Fuel Remaining: ${carlosTelemetry.fuelRemainingL.toFixed(1)} liters
+FULL LEADERBOARD:
+${leaderboardDisplay}
+
+CARLOS SAINZ - LIVE TELEMETRY:
+- Your Speed: ${carlosTelemetry.speedKph.toFixed(3)} kph
+- Your Throttle: ${carlosTelemetry.throttlePct.toFixed(3)}%
+- Your Brake: ${carlosTelemetry.brakePct.toFixed(3)}%
+- Your Brake Temperature: ${carlosTelemetry.brakeTempC.toFixed(3)}°C (optimal: 300-500°C, critical: >600°C)
+- Your Tire Temperature: ${carlosTelemetry.tireTempC.toFixed(3)}°C (optimal: 90-110°C, critical: >120°C)
+- Your Fuel Remaining: ${carlosTelemetry.fuelRemainingL.toFixed(3)} liters
 
 RESPONSE GUIDELINES:
 - Keep responses under 20 words
@@ -149,6 +135,8 @@ RESPONSE GUIDELINES:
 - If asked about battery/fuel: comment if low (<10L critical, <20L concerning)
 - If asked about brakes: comment on temperature (>600°C critical, >550°C high)
 - If asked about tires/tyres: comment on temperature (>120°C critical, >110°C warm)
+- If asked about other drivers (e.g., "Where's Sainz?", "Gap to Leclerc?"): use the leaderboard above to give precise gaps and positions
+- If asked about strategy/position: reference the leaderboard and telemetry
 - Stay in character as a professional F1 race engineer
 
 Answer the driver's question based on the telemetry data above:`;
@@ -212,12 +200,13 @@ export function fallbackAnswer(question: string, context: TelemetryContext): str
 
 /**
  * Generate race start commentary from Gemini
+ * Using REST API format as per official documentation
  */
 export async function getRaceStartCommentary(
   drivers: Array<{ name: string; team: string }>,
   config: GeminiConfig
 ): Promise<string> {
-  const model = config.model || "gemini-pro";
+  const model = config.model || "gemini-2.5-flash";
   const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${config.apiKey}`;
 
   const prompt = `You are an F1 race commentator. The race is about to start!
@@ -243,39 +232,17 @@ Generate an exciting, brief race start commentary (2-3 sentences max) about the 
             ],
           },
         ],
-        generationConfig: {
-          temperature: 0.8,
-          maxOutputTokens: 100,
-          topP: 0.9,
-          topK: 40,
-        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      const errorObj = JSON.parse(errorText);
-      
-      // Special terminal commands for different error types
-      if (response.status === 429) {
-        console.error("🚨 GEMINI_QUOTA_EXCEEDED: API quota/rate limit hit");
-        throw new Error(`GEMINI_QUOTA_EXCEEDED: ${errorObj.error?.message || errorText}`);
-      } else if (response.status === 400) {
-        console.error("🚨 GEMINI_BAD_REQUEST: Invalid request parameters");
-        throw new Error(`GEMINI_BAD_REQUEST: ${errorObj.error?.message || errorText}`);
-      } else if (response.status === 404) {
-        console.error("🚨 GEMINI_MODEL_NOT_FOUND: Model not available");
-        throw new Error(`GEMINI_MODEL_NOT_FOUND: ${errorObj.error?.message || errorText}`);
-      } else {
-        console.error(`🚨 GEMINI_API_ERROR_${response.status}:`, errorText);
-        throw new Error(`GEMINI_API_ERROR_${response.status}: ${errorObj.error?.message || errorText}`);
-      }
+      console.error("🚨 GEMINI_RACE_START_ERROR:", errorText);
+      throw new Error(`GEMINI_API_ERROR: ${errorText}`);
     }
 
     const data = await response.json();
-    const commentary =
-      data?.candidates?.[0]?.content?.parts?.[0]?.text || "And we're racing!";
-
+    const commentary = data?.candidates?.[0]?.content?.parts?.[0]?.text || "And we're racing!";
     return commentary.trim();
   } catch (error) {
     console.error("🚨 GEMINI_RACE_START_FAILED:", error);

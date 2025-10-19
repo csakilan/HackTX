@@ -68,6 +68,12 @@ declare global {
   }
 }
 
+interface Env {
+  RACE_DO: DurableObjectNamespace;
+  GEMINI_API_KEY: string;
+  ELEVENLABS_API_KEY: string;
+}
+
 // ============================================================================
 // Type Definitions - Exact JSON Schema Match
 // ============================================================================
@@ -124,6 +130,7 @@ interface LeaderboardEntry {
   name: string;
   lap: number;
   totalTime: number;
+  lastLapTime: number; // Time of the last completed lap
   gap: number;
   interval: number;
   trackMeters: number;
@@ -154,6 +161,8 @@ interface DriverState {
   currentLap: number;
   totalTime: number;
   lapStartTime: number;
+  lastLapTime: number; // Time of the last completed lap
+  lapTimes: number[]; // Array of all completed lap times
   inPit: boolean;
   pitLapsRemaining: number;
   hasPitted: boolean;
@@ -199,7 +208,7 @@ export class RaceDO {
       race: {
         raceId: "SIM-TX25",
         laps: 5,
-        lapLengthMeters: 5300,
+        lapLengthMeters: 3500, // 3.5km track for ~45 second lap times at 280 kph
         tickHz: 20,
       },
       weather: {
@@ -214,14 +223,14 @@ export class RaceDO {
       drivers: [
         { name: "Carlos Sainz", team: "Williams Racing", startPosition: 1, basePace: 85.30, paceJitter: 0.22, consistency: 0.99, pitLap: 3 },
         { name: "Max Verstappen", team: "Red Bull Racing", startPosition: 2, basePace: 84.90, paceJitter: 0.25, consistency: 0.99, pitLap: 3 },
-        { name: "Lewis Hamilton", team: "Mercedes", startPosition: 3, basePace: 85.10, paceJitter: 0.27, consistency: 0.98, pitLap: 3 },
+        { name: "Lewis Hamilton", team: "Ferrari", startPosition: 3, basePace: 85.10, paceJitter: 0.27, consistency: 0.98, pitLap: 3 },
         { name: "Lando Norris", team: "McLaren", startPosition: 4, basePace: 85.40, paceJitter: 0.28, consistency: 0.98, pitLap: 3 },
         { name: "Charles Leclerc", team: "Ferrari", startPosition: 5, basePace: 85.25, paceJitter: 0.29, consistency: 0.98, pitLap: 3 },
         { name: "George Russell", team: "Mercedes", startPosition: 6, basePace: 85.50, paceJitter: 0.30, consistency: 0.98, pitLap: 3 },
         { name: "Fernando Alonso", team: "Aston Martin", startPosition: 7, basePace: 85.70, paceJitter: 0.32, consistency: 0.98, pitLap: 3 },
         { name: "Oscar Piastri", team: "McLaren", startPosition: 8, basePace: 85.85, paceJitter: 0.31, consistency: 0.98, pitLap: 3 },
-        { name: "Sergio Perez", team: "Red Bull Racing", startPosition: 9, basePace: 85.60, paceJitter: 0.33, consistency: 0.97, pitLap: 3 },
-        { name: "Esteban Ocon", team: "Alpine", startPosition: 10, basePace: 86.00, paceJitter: 0.35, consistency: 0.97, pitLap: 3 },
+        { name: "Yuki Tsunoda", team: "Red Bull Racing", startPosition: 9, basePace: 85.60, paceJitter: 0.33, consistency: 0.97, pitLap: 3 },
+        { name: "Pierre Gasly", team: "Alpine", startPosition: 10, basePace: 86.00, paceJitter: 0.35, consistency: 0.97, pitLap: 3 },
       ],
       player: {
         name: "Carlos Sainz",
@@ -244,6 +253,8 @@ export class RaceDO {
       currentLap: 1,
       totalTime: 0,
       lapStartTime: 0,
+      lastLapTime: 0,
+      lapTimes: [],
       inPit: false,
       pitLapsRemaining: 0,
       hasPitted: false,
@@ -253,14 +264,22 @@ export class RaceDO {
 
   // Reset race simulation
   private resetRace(): void {
-    this.raceStartTime = Date.now();
-    this.raceTime = 0;
-    this.initializeDrivers();
+    // Stop the race first
     this.isRunning = false;
     if (this.intervalId !== null) {
       clearInterval(this.intervalId);
       this.intervalId = null;
     }
+    
+    // Reset all state
+    this.raceStartTime = Date.now();
+    this.raceTime = 0;
+    this.initializeDrivers();
+    this.previousOrder = [];
+    this.latestTick = null;
+    
+    // Broadcast reset session data to all clients
+    this.broadcast(JSON.stringify(this.sessionData));
   }
 
   // Start race simulation loop
@@ -376,9 +395,14 @@ export class RaceDO {
     
     // Check if driver should complete current lap
     if (driver.distanceM >= lapLenM && driver.currentLap <= this.sessionData.race.laps) {
+      // Calculate actual lap time (time since lap started)
+      const actualLapTime = this.raceTime - driver.lapStartTime;
+      
       // Lap completed
       driver.distanceM = 0; // Reset to start of new lap
-      driver.totalTime += lapTime;
+      driver.totalTime += actualLapTime;
+      driver.lastLapTime = actualLapTime;
+      driver.lapTimes.push(actualLapTime);
       driver.lapStartTime = this.raceTime;
       
       // Check for pit stop
@@ -428,21 +452,35 @@ export class RaceDO {
     }
     this.previousOrder = [...currentOrder];
     
-    const leaderTime = sorted[0]?.totalTime || 0;
+    // Calculate average speed for gap/interval time conversion (~280 kph = ~77.78 m/s)
+    const avgSpeedMps = (280 * 1000) / 3600; // Average racing speed in meters per second
     
     const leaderboard: LeaderboardEntry[] = sorted.map((driver, idx) => {
-      const gap = driver.totalTime - leaderTime;
-      const interval = idx > 0 ? driver.totalTime - sorted[idx - 1].totalTime : 0;
-      
-      // Calculate track position
+      // Calculate track position for this driver and leader
       const trackMeters = computeTrackMeters(driver.currentLap, driver.distanceM, lapLenM);
       const leaderTrackMeters = computeTrackMeters(sorted[0].currentLap, sorted[0].distanceM, lapLenM);
       const metersBehindLeader = idx === 0 ? 0 : Math.max(0, leaderTrackMeters - trackMeters);
+      
+      // Convert meters behind to time gap (seconds)
+      const gap = metersBehindLeader / avgSpeedMps;
+      
+      // Calculate interval to car ahead
+      let interval = 0;
+      if (idx > 0) {
+        const prevDriverTrackMeters = computeTrackMeters(
+          sorted[idx - 1].currentLap, 
+          sorted[idx - 1].distanceM, 
+          lapLenM
+        );
+        const metersBehindPrev = Math.max(0, prevDriverTrackMeters - trackMeters);
+        interval = metersBehindPrev / avgSpeedMps;
+      }
       
       return {
         name: driver.config.name,
         lap: driver.currentLap,
         totalTime: parseFloat(driver.totalTime.toFixed(3)),
+        lastLapTime: parseFloat(driver.lastLapTime.toFixed(3)),
         gap: parseFloat(gap.toFixed(3)),
         interval: parseFloat(interval.toFixed(3)),
         trackMeters: trackMeters,
@@ -617,10 +655,7 @@ export class RaceDO {
     // Send session bootstrap message
     ws.send(JSON.stringify(this.sessionData));
 
-    // Auto-start race if not running
-    if (!this.isRunning) {
-      this.startRace();
-    }
+    // Don't auto-start race - wait for user to click Start Race button
 
     ws.addEventListener("close", () => {
       this.sessions.delete(ws);
@@ -721,16 +756,184 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
+    // CORS preflight
+    if (request.method === "OPTIONS") {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          "Access-Control-Allow-Origin": "*",
+          "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+          "Access-Control-Allow-Headers": "Content-Type",
+        }
+      });
+    }
+
     // Health check endpoint
     if (url.pathname === "/health") {
-      return new Response("ok", { 
+      return new Response(JSON.stringify({ status: "ok" }), { 
         status: 200,
         headers: {
           "Access-Control-Allow-Origin": "*",
           "Access-Control-Allow-Methods": "GET, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type"
+          "Access-Control-Allow-Headers": "Content-Type",
+          "Content-Type": "application/json"
         }
       });
+    }
+
+    // ElevenLabs STT endpoint: POST /stt
+    if (url.pathname === "/stt" && request.method === "POST") {
+      if (!env.ELEVENLABS_API_KEY || env.ELEVENLABS_API_KEY === "your-elevenlabs-api-key-here") {
+        return new Response(JSON.stringify({ error: "ElevenLabs API key not configured" }), {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+          }
+        });
+      }
+
+      try {
+        const formData = await request.formData();
+        const audioFile = formData.get("file");
+
+        console.log("📥 STT request received, file:", audioFile);
+
+        if (!(audioFile instanceof File)) {
+          console.error("❌ No file in request or not a File object");
+          return new Response(JSON.stringify({ error: "Missing audio file" }), {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json"
+            }
+          });
+        }
+
+        console.log("📄 File details:", {
+          name: audioFile.name,
+          type: audioFile.type,
+          size: audioFile.size
+        });
+
+        // Forward to ElevenLabs Speech-to-Text API
+        const elevenLabsForm = new FormData();
+        elevenLabsForm.append("file", audioFile, audioFile.name || "audio.webm");
+        elevenLabsForm.append("model_id", "scribe_v1"); // ElevenLabs STT model
+        elevenLabsForm.append("language", "en"); // Only accept English
+
+        const elevenLabsResponse = await fetch("https://api.elevenlabs.io/v1/speech-to-text", {
+          method: "POST",
+          headers: {
+            "xi-api-key": env.ELEVENLABS_API_KEY,
+          },
+          body: elevenLabsForm,
+        });
+
+        if (!elevenLabsResponse.ok) {
+          const errorText = await elevenLabsResponse.text();
+          console.error("ElevenLabs STT error:", errorText);
+          return new Response(JSON.stringify({ error: "Transcription failed", detail: errorText }), {
+            status: elevenLabsResponse.status,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json"
+            }
+          });
+        }
+
+        const data = await elevenLabsResponse.json() as { text?: string; transcript?: string };
+        const transcribedText = data.text || data.transcript || "";
+
+        return new Response(JSON.stringify({ text: transcribedText }), {
+          status: 200,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+          }
+        });
+      } catch (error) {
+        console.error("STT endpoint error:", error);
+        return new Response(JSON.stringify({ error: "STT processing failed" }), {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+          }
+        });
+      }
+    }
+
+    // Handle /tts endpoint (Text-to-Speech)
+    if (url.pathname === "/tts") {
+      try {
+        const { text } = await request.json() as { text: string };
+        console.log("🔊 TTS request received, text:", text);
+
+        if (!text || text.trim() === "") {
+          return new Response(JSON.stringify({ error: "Missing text" }), {
+            status: 400,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json"
+            }
+          });
+        }
+
+        // Call ElevenLabs Text-to-Speech API
+        // Using a professional male voice suitable for a race engineer
+        const voiceId = "pNInz6obpgDQGcFmaJgB"; // Adam - deep male voice
+        
+        const elevenLabsResponse = await fetch(
+          `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
+          {
+            method: "POST",
+            headers: {
+              "xi-api-key": env.ELEVENLABS_API_KEY,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              text: text,
+              model_id: "eleven_monolingual_v1", // English-only model
+              language_code: "en", // Explicitly set English
+              voice_settings: {
+                stability: 0.5,
+                similarity_boost: 0.75,
+              },
+            }),
+          }
+        );
+
+        if (!elevenLabsResponse.ok) {
+          const errorText = await elevenLabsResponse.text();
+          console.error("ElevenLabs TTS error:", errorText);
+          return new Response(JSON.stringify({ error: "TTS failed", detail: errorText }), {
+            status: elevenLabsResponse.status,
+            headers: {
+              "Access-Control-Allow-Origin": "*",
+              "Content-Type": "application/json"
+            }
+          });
+        }
+
+        // Return the audio stream
+        return new Response(elevenLabsResponse.body, {
+          status: 200,
+          headers: {
+            "Content-Type": "audio/mpeg",
+            "Access-Control-Allow-Origin": "*",
+          },
+        });
+      } catch (error) {
+        console.error("TTS endpoint error:", error);
+        return new Response(JSON.stringify({ error: "TTS processing failed" }), {
+          status: 500,
+          headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Content-Type": "application/json"
+          }
+        });
+      }
     }
 
     // Get or create the Durable Object instance
@@ -740,6 +943,7 @@ export default {
     // Handle /ask endpoint
     if (url.pathname === "/ask") {
       const q = url.searchParams.get("q") || "";
+      console.log("🎤 DRIVER QUESTION:", q);
       
       // Fetch latest tick from Durable Object
       const doResponse = await stub.fetch(new Request("https://do/internal/latest"));
@@ -765,8 +969,9 @@ export default {
           try {
             answer = await askGemini(q, telemetryContext, {
               apiKey: env.GEMINI_API_KEY,
-              model: "gemini-1.5-pro",
+              model: "gemini-2.5-flash",
             });
+            console.log("🤖 AI ENGINEER RESPONSE:", answer);
           } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             
