@@ -1,0 +1,120 @@
+{
+  "race": {
+    "raceId": "SIM-TX25",
+    "laps": 5,
+    "lapLengthMeters": 5300,
+    "tickMs": 100
+  },
+  "drivers": [
+    {
+      "name": "Carlos Sainz",
+      "team": "Williams Racing",
+
+      "basePace": 85.30,
+      "paceJitter": 0.22,
+      "consistency": 0.990,
+
+      "pitLap": 3,
+
+      "telemetry": {
+        "fuelConsumptionRate": 2.35,         
+        "brakeTemp": { "min": 450, "max": 950 },  
+        "tireTemp": { "min": 85, "max": 110 },    
+        "throttlePressure": { "min": 0, "max": 100 },
+        "brakePressure": { "min": 0, "max": 100 }     
+      },
+
+      "initialState": {
+        "currentLap": 1,
+        "lapProgress": 0.0,
+        "totalTime": 0.0,
+        "fuelRemaining": 11.75,
+        "currentBrakeTemp": 500,
+        "currentTireTemp": 90,
+        "currentThrottle": 0,
+        "currentBrake": 0
+      }
+    },
+    {
+      "name": "Max Verstappen",
+      "team": "Red Bull Racing",
+      "basePace": 84.90,
+      "paceJitter": 0.25,
+      "consistency": 0.987,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Lewis Hamilton",
+      "team": "Mercedes",
+      "basePace": 85.10,
+      "paceJitter": 0.27,
+      "consistency": 0.985,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Lando Norris",
+      "team": "McLaren",
+      "basePace": 85.40,
+      "paceJitter": 0.28,
+      "consistency": 0.983,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Charles Leclerc",
+      "team": "Ferrari",
+      "basePace": 85.25,
+      "paceJitter": 0.29,
+      "consistency": 0.982,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "George Russell",
+      "team": "Mercedes",
+      "basePace": 85.50,
+      "paceJitter": 0.30,
+      "consistency": 0.980,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Fernando Alonso",
+      "team": "Aston Martin",
+      "basePace": 85.70,
+      "paceJitter": 0.32,
+      "consistency": 0.978,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Oscar Piastri",
+      "team": "McLaren",
+      "basePace": 85.85,
+      "paceJitter": 0.31,
+      "consistency": 0.979,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Sergio Perez",
+      "team": "Red Bull Racing",
+      "basePace": 85.60,
+      "paceJitter": 0.33,
+      "consistency": 0.976,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    },
+    {
+      "name": "Esteban Ocon",
+      "team": "Alpine",
+      "basePace": 86.00,
+      "paceJitter": 0.35,
+      "consistency": 0.975,
+      "pitLap": 3,
+      "initialState": { "currentLap": 1, "lapProgress": 0.0, "totalTime": 0.0 }
+    }
+  ]
+}
