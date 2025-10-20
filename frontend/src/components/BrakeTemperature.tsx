@@ -1,6 +1,16 @@
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, ReferenceLine } from 'recharts';
-import { useRaceStore } from '../store/useRaceStore';
-import { Disc } from 'lucide-react';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  Legend,
+  ReferenceLine,
+} from "recharts";
+import { useRaceStore } from "../store/useRaceStore";
+import { Disc } from "lucide-react";
 
 export function BrakeTemperature() {
   const telemetryData = useRaceStore((state) => state.telemetryData);
@@ -25,72 +35,119 @@ export function BrakeTemperature() {
       </div>
 
       {/* Chart */}
-      <div className="flex-1 p-3 min-h-0 w-full" style={{ minHeight: '400px' }}>
+      <div className="flex-1 p-3 min-h-0 w-full" style={{ minHeight: "400px" }}>
         <ResponsiveContainer width="100%" height="100%">
-          <LineChart data={chartData} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.1)" />
-            <XAxis 
-              dataKey="distance" 
+          <LineChart
+            data={chartData}
+            margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
+          >
+            <CartesianGrid
+              strokeDasharray="3 3"
+              stroke="rgba(255,255,255,0.1)"
+            />
+            <XAxis
+              dataKey="distance"
               stroke="#888"
-              style={{ fontSize: '11px', fontFamily: 'Formula1-Display-Regular' }}
-              label={{ value: 'Distance (km)', position: 'insideBottom', offset: -3, fill: '#888', fontSize: 11 }}
+              style={{
+                fontSize: "11px",
+                fontFamily: "Formula1-Display-Regular",
+              }}
+              label={{
+                value: "Distance (km)",
+                position: "insideBottom",
+                offset: -3,
+                fill: "#888",
+                fontSize: 11,
+              }}
               tickFormatter={(value) => value.toFixed(1)}
             />
-            <YAxis 
+            <YAxis
               stroke="#888"
-              style={{ fontSize: '11px', fontFamily: 'Formula1-Display-Regular' }}
-              label={{ value: 'Temp (°C)', angle: -90, position: 'insideLeft', fill: '#888', fontSize: 11 }}
+              style={{
+                fontSize: "11px",
+                fontFamily: "Formula1-Display-Regular",
+              }}
+              label={{
+                value: "Temp (°C)",
+                angle: -90,
+                position: "insideLeft",
+                fill: "#888",
+                fontSize: 11,
+              }}
               domain={[200, 600]}
               width={45}
             />
-            <Tooltip 
-              contentStyle={{ 
-                backgroundColor: '#1a1a1a', 
-                border: '1px solid rgba(225,6,0,0.5)',
-                borderRadius: '8px',
-                fontFamily: 'Formula1-Display-Regular',
-                fontSize: '12px'
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#1a1a1a",
+                border: "1px solid rgba(225,6,0,0.5)",
+                borderRadius: "8px",
+                fontFamily: "Formula1-Display-Regular",
+                fontSize: "12px",
               }}
-              labelStyle={{ color: '#fff' }}
+              labelStyle={{ color: "#fff" }}
               formatter={(value: number) => `${value.toFixed(0)}°C`}
             />
-            <Legend 
-              wrapperStyle={{ fontFamily: 'Formula1-Display-Regular', fontSize: '10px' }}
+            <Legend
+              wrapperStyle={{
+                fontFamily: "Formula1-Display-Regular",
+                fontSize: "10px",
+              }}
               iconSize={8}
             />
-            <ReferenceLine y={400} stroke="#00d2be" strokeDasharray="5 5" label={{ value: 'Optimal', fill: '#00d2be', fontSize: 9, position: 'right' }} />
-            <ReferenceLine y={550} stroke="#e10600" strokeDasharray="5 5" label={{ value: 'Critical', fill: '#e10600', fontSize: 9, position: 'right' }} />
-            <Line 
-              type="monotone" 
-              dataKey="frontLeft" 
-              stroke="#ff6b6b" 
+            <ReferenceLine
+              y={400}
+              stroke="#00d2be"
+              strokeDasharray="5 5"
+              label={{
+                value: "Optimal",
+                fill: "#00d2be",
+                fontSize: 9,
+                position: "right",
+              }}
+            />
+            <ReferenceLine
+              y={550}
+              stroke="#e10600"
+              strokeDasharray="5 5"
+              label={{
+                value: "Critical",
+                fill: "#e10600",
+                fontSize: 9,
+                position: "right",
+              }}
+            />
+            <Line
+              type="monotone"
+              dataKey="frontLeft"
+              stroke="#ff6b6b"
               strokeWidth={1.5}
               dot={false}
               name="Front Left"
               isAnimationActive={false}
             />
-            <Line 
-              type="monotone" 
-              dataKey="frontRight" 
-              stroke="#4ecdc4" 
+            <Line
+              type="monotone"
+              dataKey="frontRight"
+              stroke="#4ecdc4"
               strokeWidth={1.5}
               dot={false}
               name="Front Right"
               isAnimationActive={false}
             />
-            <Line 
-              type="monotone" 
-              dataKey="rearLeft" 
-              stroke="#ffe66d" 
+            <Line
+              type="monotone"
+              dataKey="rearLeft"
+              stroke="#ffe66d"
               strokeWidth={1.5}
               dot={false}
               name="Rear Left"
               isAnimationActive={false}
             />
-            <Line 
-              type="monotone" 
-              dataKey="rearRight" 
-              stroke="#a8e6cf" 
+            <Line
+              type="monotone"
+              dataKey="rearRight"
+              stroke="#a8e6cf"
               strokeWidth={1.5}
               dot={false}
               name="Rear Right"
