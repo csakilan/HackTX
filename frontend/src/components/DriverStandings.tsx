@@ -61,11 +61,14 @@ export function DriverStandings() {
 
           // Update telemetry data for Carlos Sainz
           if (data.carlosTelemetry) {
-            console.log('🏎️ Received Carlos telemetry:', data.carlosTelemetry);
+            console.log("🏎️ Received Carlos telemetry:", data.carlosTelemetry);
             updateTelemetry(data.carlosTelemetry);
-            
+
             // Update fuel data for the current lap
-            updateFuelData(data.carlosTelemetry.currentLap, data.carlosTelemetry.fuelRemainingL);
+            updateFuelData(
+              data.carlosTelemetry.currentLap,
+              data.carlosTelemetry.fuelRemainingL
+            );
           }
         }
       },
